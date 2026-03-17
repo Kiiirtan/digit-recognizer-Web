@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digit Recognizer | CNN Model</title>
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #111827;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Subtle grid background */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        }
+
+        /* 3D Perspective Utility */
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+
+        .preserve-3d {
+            transform-style: preserve-3d;
+        }
+    </style>
+</head>
+
+<body class="relative overflow-x-hidden selection:bg-blue-100 selection:text-blue-900">
+
+    <div id="grid-bg" class="fixed inset-0 z-[-1] bg-grid h-[120vh] w-[100vw]"></div>
+
+    <header
+        class="fixed top-0 left-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50 transition-transform duration-300"
+        id="navbar">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+                <h1 class="text-sm font-semibold tracking-tight">digit-recognizer</h1>
+            </div>
+
+            <nav class="hidden md:flex space-x-6 text-sm text-gray-500 font-medium nav-links">
+                <a href="#about" class="hover:text-gray-900 transition-colors">Architecture</a>
+                <a href="#preprocessing" class="hover:text-gray-900 transition-colors">Pipeline</a>
+                <a href="#evaluation" class="hover:text-gray-900 transition-colors">Evaluation</a>
+                <a href="#installation" class="hover:text-gray-900 transition-colors">Quick Start</a>
+            </nav>
+        </div>
+    </header>
+
+    <section
+        class="min-h-screen flex flex-col items-start justify-center px-6 pt-32 pb-20 max-w-5xl mx-auto relative overflow-hidden">
+
+        <div class="absolute right-[-10%] top-[10%] opacity-10 pointer-events-none w-96 h-96 z-[-1]" id="spin-graphic">
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+                <circle cx="50" cy="50" r="48" fill="none" stroke="black" stroke-width="0.5" stroke-dasharray="4 4" />
+                <circle cx="50" cy="50" r="35" fill="none" stroke="black" stroke-width="0.5" stroke-dasharray="2 6" />
+                <path d="M50 2 L50 98 M2 50 L98 50" stroke="black" stroke-width="0.2" />
+            </svg>
+        </div>
+
+        <div class="w-full relative z-10">
+            <div
+                class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-mono mb-6 hero-elem">
+                <span>v1.0.0</span>
+                <span class="text-gray-300">|</span>
+                <span>Model Active</span>
+            </div>
+
+            <h1
+                class="text-5xl md:text-7xl font-semibold tracking-tight text-gray-900 leading-[1.05] mb-6 hero-elem max-w-3xl">
+                Handwritten digit recognition <br /><span class="text-gray-400">powered by a CNN.</span>
+            </h1>
+
+            <p class="text-gray-500 text-lg max-w-2xl leading-relaxed hero-elem mb-12 h-8">
+                <span id="typing"
+                    class="font-mono text-sm bg-blue-50/50 text-blue-700 px-2 py-1 rounded border border-blue-100"></span>
+            </p>
+
+            <div class="grid sm:grid-cols-2 gap-6 w-full max-w-2xl hero-elem perspective-1000">
+
+                <div class="card-wrapper cursor-pointer" onclick="goToCanvas()">
+                    <div
+                        class="card-inner w-full h-full p-6 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm transition-colors duration-300 hover:border-blue-400 preserve-3d">
+                        <div class="flex items-center justify-between mb-4 transform translate-z-[20px]">
+                            <div
+                                class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center icon-container">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300 arrow">→</span>
+                        </div>
+                        <div class="transform translate-z-[30px]">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-1">Open Canvas</h2>
+                            <p class="text-sm text-gray-500">Draw a digit directly in your browser.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-wrapper cursor-pointer" onclick="goToUpload()">
+                    <div
+                        class="card-inner w-full h-full p-6 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm transition-colors duration-300 hover:border-blue-400 preserve-3d">
+                        <div class="flex items-center justify-between mb-4 transform translate-z-[20px]">
+                            <div
+                                class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center icon-container">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                                </svg>
+                            </div>
+                            <span class="text-gray-300 arrow">→</span>
+                        </div>
+                        <div class="transform translate-z-[30px]">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-1">Upload Image</h2>
+                            <p class="text-sm text-gray-500">Test the model with an existing image.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="about" class="py-32 px-6 border-t border-gray-100 bg-gray-50/30 overflow-hidden perspective-1000">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-12 scroll-reveal">Network
+                Architecture</h2>
+
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div class="scroll-reveal-text">
+                    <p class="text-gray-600 text-lg leading-relaxed mb-6">
+                        This application utilizes a custom Convolutional Neural Network built with TensorFlow. The
+                        architecture is specifically optimized for edge-inference and low latency.
+                    </p>
+                    <p class="text-gray-600 text-lg leading-relaxed">
+                        The input matrix passes through multiple <code
+                            class="bg-gray-100 px-1 rounded text-sm text-blue-600 font-mono">Conv2D</code> and <code
+                            class="bg-gray-100 px-1 rounded text-sm text-blue-600 font-mono">MaxPooling2D</code> layers
+                        to extract spatial hierarchies—edges, curves, and loops—before being flattened and classified
+                        into one of the 10 digit classes.
+                    </p>
+                </div>
+
+                <div
+                    class="code-block bg-[#0d1117] p-8 rounded-2xl border border-gray-800 font-mono text-sm text-gray-300 shadow-2xl preserve-3d">
+                    <div class="flex gap-2 mb-6 border-b border-gray-800 pb-4">
+                        <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+                    </div>
+                    <div class="text-gray-500 mb-2"># Model definition in Keras</div>
+                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Conv2D<span
+                            class="text-white">(</span>32, (3,3), activation='relu'<span class="text-white">))</span>
+                    </div>
+                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>MaxPooling2D<span
+                            class="text-white">(</span>(2,2)<span class="text-white">))</span></div>
+                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Flatten<span
+                            class="text-white">())</span></div>
+                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Dropout<span
+                            class="text-white">(</span>0.2<span class="text-white">))</span></div>
+                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Dense<span
+                            class="text-white">(</span>128, activation='relu'<span class="text-white">))</span></div>
+                    <div class="text-[#79c0ff] mb-2">model.add<span class="text-white">(</span>Dense<span
+                            class="text-white">(</span>10, activation='softmax'<span class="text-white">))</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="preprocessing" class="py-32 px-6 border-t border-gray-100">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-12 scroll-reveal">Data
+                Preprocessing Pipeline</h2>
+
+            <div class="grid md:grid-cols-2 gap-16 items-start">
+                <div
+                    class="w-full bg-gray-50 rounded-2xl border border-gray-200 p-6 flex flex-col items-center justify-center scroll-reveal-image">
+
+                    <p class="text-xs text-gray-400 mt-4 text-center">Visual representation of tensor transformations
+                    </p>
+                </div>
+
+                <div class="scroll-reveal-text">
+                    <h3 class="text-2xl font-semibold text-gray-900 mb-4">Bridging the gap between canvas and tensor.
+                    </h3>
+                    <p class="text-gray-600 text-lg leading-relaxed mb-8">
+                        The original dataset consists of white digits centered on a black background, strictly bounded
+                        to a 28x28 pixel grid. Because users draw black ink on a white HTML canvas of variable size, the
+                        client-side code must aggressively preprocess the input to prevent model hallucination.
+                    </p>
+
+                    <ul class="space-y-6">
+                        <li class="flex gap-4">
+                            <div
+                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-mono text-sm shrink-0">
+                                1</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Grayscale & Inversion</h4>
+                                <p class="text-sm text-gray-500 mt-1">Converts the RGB canvas data to a single-channel
+                                    grayscale array, and inverts the colors to match the dataset (white stroke, black
+                                    background).</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <div
+                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-mono text-sm shrink-0">
+                                2</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Bounding Box Extraction</h4>
+                                <p class="text-sm text-gray-500 mt-1">Crops empty whitespace around the user's drawing
+                                    so the digit occupies the maximum relative area.</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-4">
+                            <div
+                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-mono text-sm shrink-0">
+                                3</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-900">Downsampling & Normalization</h4>
+                                <p class="text-sm text-gray-500 mt-1">Resizes the cropped image strictly to a 28x28
+                                    matrix and normalizes pixel intensities to float values between 0.0 and 1.0.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="evaluation" class="py-32 px-6 border-t border-gray-100 bg-gray-50/30">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex justify-between items-end mb-16 scroll-reveal">
+                <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest">Model Evaluation</h2>
+                <a href="http://yann.lecun.com/exdb/mnist/" target="_blank"
+                    class="text-sm text-blue-600 hover:text-blue-800 transition-colors">View Source Dataset →</a>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+                <div
+                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-4xl font-semibold text-gray-900 mb-2 tracking-tight"><span
+                            id="count-samples">0</span>k</div>
+                    <div class="text-sm text-gray-500 font-mono">Training Set</div>
+                </div>
+                <div
+                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-4xl font-semibold text-gray-900 mb-2 tracking-tight">10k</div>
+                    <div class="text-sm text-gray-500 font-mono">Validation Set</div>
+                </div>
+                <div
+                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-4xl font-semibold text-gray-900 mb-2 tracking-tight">0.04</div>
+                    <div class="text-sm text-gray-500 font-mono">Loss (Cross-Entropy)</div>
+                </div>
+                <div
+                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div class="text-4xl font-semibold text-blue-600 mb-2 tracking-tight">98.5<span
+                            class="text-2xl">%</span></div>
+                    <div class="text-sm text-gray-500 font-mono">Test Accuracy</div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div class="scroll-reveal-text">
+                    <h3 class="text-2xl font-semibold text-gray-900 mb-4">Understanding Model Limitations</h3>
+                    <p class="text-gray-600 text-lg leading-relaxed mb-6">
+                        While the model achieves exceptional accuracy, analyzing the confusion matrix reveals distinct
+                        edge cases. The highest rate of false positives occurs between visually similar digits.
+                    </p>
+                    <p class="text-gray-600 text-lg leading-relaxed">
+                        For instance, heavily slanted <span
+                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">1</span>s are
+                        occasionally misclassified as <span
+                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">7</span>s, and
+                        loosely drawn <span
+                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">3</span>s can be
+                        confused with <span
+                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">5</span>s. Dropout
+                        regularization was implemented to reduce overfitting on the distinct handwriting styles present
+                        in the dataset.
+                    </p>
+                </div>
+
+                <div
+                    class="w-full bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col items-center scroll-reveal-image">
+
+                    <p class="text-xs text-gray-400 mt-4 text-center">Confusion matrix heatmap on test validation</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="installation" class="py-32 px-6 border-t border-gray-100">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-8 scroll-reveal">Run Locally
+            </h2>
+
+            <div
+                class="bg-[#0d1117] rounded-xl p-6 flex items-start justify-between text-sm font-mono text-gray-300 text-left border border-gray-800 shadow-xl scroll-reveal relative group">
+                <div class="leading-relaxed overflow-x-auto">
+                    <span class="text-gray-500"># Clone the repository</span><br>
+                    <span class="text-[#79c0ff]">git</span> clone
+                    https://github.com/yourusername/digit-recognizer.git<br><br>
+
+                    <span class="text-gray-500"># Navigate into the directory & install dependencies</span><br>
+                    <span class="text-[#79c0ff]">cd</span> digit-recognizer<br>
+                    <span class="text-[#79c0ff]">pip</span> install -r requirements.txt<br><br>
+
+                    <span class="text-gray-500"># Start the local development server</span><br>
+                    <span class="text-[#79c0ff]">python</span> app.py
+                </div>
+
+                <button onclick="copyToClipboard(this)"
+                    class="p-2 ml-4 rounded-md text-gray-500 hover:text-white hover:bg-gray-800 transition-colors focus:outline-none"
+                    title="Copy to clipboard">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                </button>
+                <div
+                    class="copy-feedback absolute top-4 right-14 text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded opacity-0 transition-opacity">
+                    Copied!</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="stack" class="py-24 px-6 border-t border-gray-100 bg-gray-50/30">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-12 scroll-reveal text-center">
+                Technology Stack</h2>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div
+                    class="stack-card p-6 border border-gray-200 bg-white rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+                    <div class="text-gray-900 font-semibold mb-1">TensorFlow / Keras</div>
+                    <div class="text-xs text-gray-500 font-mono">Model Training</div>
+                </div>
+                <div
+                    class="stack-card p-6 border border-gray-200 bg-white rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+                    <div class="text-gray-900 font-semibold mb-1">Python</div>
+                    <div class="text-xs text-gray-500 font-mono">Backend Logic</div>
+                </div>
+                <div
+                    class="stack-card p-6 border border-gray-200 bg-white rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+                    <div class="text-gray-900 font-semibold mb-1">Tailwind CSS</div>
+                    <div class="text-xs text-gray-500 font-mono">Styling & UI</div>
+                </div>
+                <div
+                    class="stack-card p-6 border border-gray-200 bg-white rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+                    <div class="text-gray-900 font-semibold mb-1">GSAP</div>
+                    <div class="text-xs text-gray-500 font-mono">Scroll Animations</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-12 px-6 text-gray-400 text-sm font-mono border-t border-gray-100 bg-white">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>Built by Kirtan Patidar & Harshit Walke</p>
+            <p>B.Tech CSE • AI & Data Science</p>
+        </div>
+    </footer>
+
+    <script>
+        // Start from top on reload
+        window.history.scrollRestoration = 'manual';
+        window.onload = () => window.scrollTo(0, 0);
+
+        // Navigation
+        function goToCanvas() { window.location.href = "canvas.html"; }
+        function goToUpload() { window.location.href = "upload.html"; }
+
+        // Copy Terminal Command
+        function copyToClipboard(button) {
+            const textToCopy = `git clone https://github.com/yourusername/digit-recognizer.git\ncd digit-recognizer\npip install -r requirements.txt\npython app.py`;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const feedback = button.nextElementSibling;
+                feedback.classList.remove('opacity-0');
+                setTimeout(() => feedback.classList.add('opacity-0'), 2000);
+            });
+        }
+
+        // Developer Typewriter
+        const text = "> Initializing CNN Model... System ready.";
+        let i = 0;
+        function typeWriter() {
+            if (i < text.length) {
+                document.getElementById("typing").innerHTML += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 40);
+            }
+        }
+
+        // --- GSAP ANIMATIONS ---
+        document.addEventListener("DOMContentLoaded", () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            // Hero Entrance
+            gsap.fromTo(".hero-elem",
+                { opacity: 0, y: 30, rotationX: 10 },
+                { opacity: 1, y: 0, rotationX: 0, duration: 1, stagger: 0.15, ease: "power3.out", onComplete: typeWriter, delay: 0.2 }
+            );
+
+            // Continuous Rotating Graphic
+            gsap.to("#spin-graphic", {
+                rotation: 360,
+                duration: 40,
+                repeat: -1,
+                ease: "linear"
+            });
+
+            // 3D Card Hover Interaction (The physics feel)
+            document.querySelectorAll('.card-wrapper').forEach(wrapper => {
+                const inner = wrapper.querySelector('.card-inner');
+                const icon = wrapper.querySelector('.icon-container');
+                const arrow = wrapper.querySelector('.arrow');
+
+                wrapper.addEventListener('mousemove', (e) => {
+                    const rect = wrapper.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+
+                    const rotateX = ((y - centerY) / centerY) * -10;
+                    const rotateY = ((x - centerX) / centerX) * 10;
+
+                    gsap.to(inner, {
+                        rotationX: rotateX,
+                        rotationY: rotateY,
+                        scale: 1.02,
+                        ease: "power2.out",
+                        duration: 0.4
+                    });
+                });
+
+                wrapper.addEventListener('mouseenter', () => {
+                    gsap.to(icon, { rotation: 15, scale: 1.1, duration: 0.3 });
+                    gsap.to(arrow, { x: 5, color: "#2563eb", duration: 0.3 });
+                });
+
+                wrapper.addEventListener('mouseleave', () => {
+                    gsap.to(inner, { rotationX: 0, rotationY: 0, scale: 1, ease: "elastic.out(1, 0.5)", duration: 1 });
+                    gsap.to(icon, { rotation: 0, scale: 1, duration: 0.3 });
+                    gsap.to(arrow, { x: 0, color: "#d1d5db", duration: 0.3 });
+                });
+            });
+
+            // Parallax Background Grid
+            gsap.to("#grid-bg", {
+                scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 1 },
+                y: -150,
+                ease: "none"
+            });
+
+            // Standard Scroll Reveals
+            gsap.utils.toArray('.scroll-reveal').forEach(el => {
+                gsap.fromTo(el,
+                    { opacity: 0, y: 20 },
+                    { scrollTrigger: { trigger: el, start: "top 85%" }, opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }
+                );
+            });
+
+            // Staggered text blocks
+            gsap.utils.toArray('.scroll-reveal-text').forEach(container => {
+                const elements = container.children;
+                gsap.fromTo(elements,
+                    { opacity: 0, x: -20 },
+                    { scrollTrigger: { trigger: container, start: "top 80%" }, opacity: 1, x: 0, duration: 0.8, stagger: 0.15, ease: "power3.out" }
+                );
+            });
+
+            // Images scale up slightly
+            gsap.utils.toArray('.scroll-reveal-image').forEach(img => {
+                gsap.fromTo(img,
+                    { opacity: 0, scale: 0.95 },
+                    { scrollTrigger: { trigger: img, start: "top 80%" }, opacity: 1, scale: 1, duration: 1, ease: "power3.out" }
+                );
+            });
+
+            // 3D Code Block Flip
+            gsap.fromTo(".code-block",
+                { opacity: 0, rotationY: 45, rotationX: 15, z: -200, scale: 0.9 },
+                { scrollTrigger: { trigger: ".code-block", start: "top 80%" }, opacity: 1, rotationY: 0, rotationX: 0, z: 0, scale: 1, duration: 1.2, ease: "back.out(1.2)" }
+            );
+
+            // Metrics Bounce & Rotate In
+            gsap.fromTo(".metric-block",
+                { opacity: 0, y: 40, scale: 0.9 },
+                { scrollTrigger: { trigger: "#evaluation", start: "top 75%" }, opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.1, ease: "back.out(1.5)" }
+            );
+
+            // Stack Cards Stagger
+            gsap.fromTo(".stack-card",
+                { opacity: 0, y: 20 },
+                { scrollTrigger: { trigger: "#stack", start: "top 80%" }, opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power2.out" }
+            );
+
+            // Metric Counter
+            ScrollTrigger.create({
+                trigger: "#evaluation",
+                start: "top 80%",
+                onEnter: () => {
+                    gsap.to({ val: 0 }, {
+                        val: 60,
+                        duration: 2,
+                        ease: "power3.out",
+                        onUpdate: function () {
+                            document.getElementById("count-samples").innerText = Math.floor(this.targets()[0].val);
+                        }
+                    });
+                },
+                once: true
+            });
+
+            // Navbar hide/show on scroll
+            let lastScroll = 0;
+            window.addEventListener("scroll", () => {
+                const currentScroll = window.pageYOffset;
+                const navbar = document.getElementById("navbar");
+
+                if (currentScroll > 50 && currentScroll > lastScroll) {
+                    navbar.style.transform = "translateY(-100%)";
+                } else {
+                    navbar.style.transform = "translateY(0)";
+                }
+                lastScroll = currentScroll;
+            });
+        });
+    </script>
+</body>
+
+</html>

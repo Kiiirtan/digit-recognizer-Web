@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Digit | CNN Model</title>
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #111827;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Subtle grid background */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        }
+
+        /* Custom Canvas Styling */
+        .canvas-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem;
+        }
+
+        canvas#drawCanvas {
+            background-color: #000000;
+            cursor: crosshair;
+            touch-action: none;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.3s ease;
+        }
+
+        canvas#drawCanvas:hover {
+            box-shadow: inset 0 0 20px 0 rgb(59 130 246 / 0.4);
+        }
+
+        /* Scanning Laser Effect */
+        #scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #3b82f6;
+            box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .pipeline-step {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pipeline-step.active {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: translateX(10px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1);
+        }
+
+        .preserve-3d {
+            transform-style: preserve-3d;
+        }
+
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+    </style>
+</head>
+
+<body class="relative overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen">
+
+    <div id="scroll-progress" class="fixed top-0 left-0 h-1 bg-blue-600 z-[60] w-0"></div>
+
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none perspective-1000">
+        <div id="grid-bg" class="absolute inset-[-50%] bg-grid w-[200%] h-[200%] opacity-80"></div>
+
+        <div id="orb-1" class="absolute top-[10%] left-[10%] w-96 h-96 bg-blue-400/10 rounded-full blur-[100px]"></div>
+        <div id="orb-2" class="absolute bottom-[20%] right-[10%] w-96 h-96 bg-indigo-400/10 rounded-full blur-[100px]">
+        </div>
+
+        <svg id="node-graphic" class="absolute top-[25%] right-[15%] w-48 h-48 opacity-20" viewBox="0 0 100 100">
+            <circle cx="20" cy="50" r="3" fill="#3b82f6" />
+            <circle cx="50" cy="20" r="3" fill="#3b82f6" />
+            <circle cx="50" cy="80" r="3" fill="#3b82f6" />
+            <circle cx="80" cy="50" r="3" fill="#3b82f6" />
+            <line x1="20" y1="50" x2="50" y2="20" stroke="#3b82f6" stroke-width="0.5" stroke-dasharray="2 2" />
+            <line x1="20" y1="50" x2="50" y2="80" stroke="#3b82f6" stroke-width="0.5" stroke-dasharray="2 2" />
+            <line x1="50" y1="20" x2="80" y2="50" stroke="#3b82f6" stroke-width="0.5" stroke-dasharray="2 2" />
+            <line x1="50" y1="80" x2="80" y2="50" stroke="#3b82f6" stroke-width="0.5" stroke-dasharray="2 2" />
+        </svg>
+
+        <div id="code-graphic"
+            class="absolute bottom-[20%] left-[10%] text-gray-300 font-mono text-xs opacity-40 transform -rotate-90 origin-left select-none">
+            tensor_shape=(28,28,1)<br>
+            dtype=float32
+        </div>
+    </div>
+
+    <header id="navbar"
+        class="w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50 fixed top-0 left-0 transition-transform duration-300">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3 group hover:opacity-80 transition-opacity">
+                <div class="w-2 h-2 rounded-full bg-blue-600 group-hover:animate-pulse"></div>
+                <h1 class="text-sm font-semibold tracking-tight text-gray-900">digit-recognizer</h1>
+            </a>
+
+            <nav class="flex space-x-6 text-sm text-gray-500 font-medium nav-links">
+                <a href="index.html" class="hover:text-gray-900 transition-colors flex items-center gap-1">
+                    ← <span class="hidden sm:inline">Overview</span>
+                </a>
+                <a href="#how-it-works" class="hover:text-gray-900 transition-colors hidden md:inline">
+                    Pipeline
+                </a>
+                <a href="#api-specs" class="hover:text-gray-900 transition-colors hidden md:inline">
+                    API Docs
+                </a>
+                <a href="upload.html"
+                    class="hover:text-blue-600 transition-colors flex items-center gap-1 text-gray-900">
+                    Upload Image →
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex flex-col items-center justify-center px-6 pt-32 pb-16 min-h-[95vh] relative perspective-1000">
+
+        <div id="workspace-container" class="w-full max-w-md opacity-0 translate-y-12 z-10 preserve-3d">
+
+            <div
+                class="bg-gray-900 text-gray-300 px-4 py-3 rounded-t-xl text-xs font-mono flex items-center justify-between border-b border-gray-800 shadow-2xl transform translate-z-[10px]">
+                <div class="flex gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500/80 cursor-pointer hover:bg-red-400"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/80 cursor-pointer hover:bg-yellow-400"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/80 cursor-pointer hover:bg-green-400"></div>
+                </div>
+                <span class="opacity-70">~/models/cnn/canvas_input.py</span>
+            </div>
+
+            <div
+                class="bg-white/90 backdrop-blur-xl border-x border-b border-gray-200 rounded-b-xl shadow-2xl p-6 md:p-8 relative overflow-hidden transform translate-z-[20px]">
+
+                <div class="text-center mb-6 relative z-10">
+                    <h2 class="text-2xl font-semibold text-gray-900 tracking-tight">Interactive Canvas</h2>
+                    <p class="text-sm text-gray-500 mt-1">Draw a single digit (0-9) inside the black grid.</p>
+                </div>
+
+                <div class="flex justify-center mb-6 relative z-10">
+                    <div
+                        class="p-1.5 bg-gray-100 rounded-2xl border border-gray-200 shadow-inner canvas-container relative">
+                        <canvas id="drawCanvas" width="200" height="200" class="rounded-xl block"></canvas>
+                        <div id="scanner-line"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                    <button onclick="clearCanvas()"
+                        class="w-full py-2.5 px-4 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none">
+                        Clear Canvas
+                    </button>
+                    <button id="predict-btn" onclick="predictDigit()"
+                        class="w-full py-2.5 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md hover:shadow-lg transition-all focus:outline-none flex justify-center items-center gap-2 group relative overflow-hidden">
+                        <span class="relative z-10">Predict</span>
+                        <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform relative z-10" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div
+                    class="bg-[#0d1117] rounded-lg p-4 font-mono text-xs md:text-sm min-h-[90px] flex flex-col justify-center border border-gray-800 shadow-inner relative z-10">
+                    <div id="loading" class="text-gray-400 break-words">
+                        <span class="text-green-400">root@model</span>:~$ await input...
+                    </div>
+
+                    <div id="result-container" class="hidden mt-3 border-t border-gray-800 pt-3">
+                        <div id="result" class="space-y-1.5">
+                        </div>
+                    </div>
+                </div>
+
+                <canvas id="resizeCanvas" width="28" height="28" style="display:none;"></canvas>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center opacity-0 animate-fade-in-up"
+            style="animation-delay: 1.5s; animation-fill-mode: forwards;">
+            <span class="text-[10px] text-gray-400 font-mono mb-2 uppercase tracking-widest">Scroll to view
+                architecture</span>
+            <div class="w-[1px] h-8 bg-gradient-to-b from-gray-300 to-transparent"></div>
+        </div>
+    </main>
+
+    <section id="how-it-works" class="py-32 px-6 border-t border-gray-100 bg-gray-50/50 relative overflow-hidden">
+
+        <div class="absolute top-10 left-[-5%] text-[10rem] font-bold text-gray-100 opacity-50 pointer-events-none z-0 tracking-tighter"
+            id="bg-text-pipeline">PIPELINE</div>
+
+        <div class="max-w-5xl mx-auto relative z-10">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Under the Hood</h2>
+                <h3 class="text-3xl font-bold text-gray-900 tracking-tight">Client-Side Data Processing</h3>
+                <p class="text-gray-500 mt-4 max-w-2xl mx-auto">Before the neural network can analyze the drawing, the
+                    raw canvas data must be isolated, scaled, and transformed into a tensor matching the training
+                    dataset.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+                <div class="space-y-4">
+                    <div id="step-1"
+                        class="pipeline-step bg-white border border-gray-200 rounded-xl p-6 flex items-start gap-4 shadow-sm scroll-reveal-step">
+                        <div
+                            class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-mono text-sm shrink-0">
+                            1</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900">Bounding Box Extraction</h4>
+                            <p class="text-sm text-gray-500 mt-1 leading-relaxed">Scans the RGBA pixel array to find the
+                                exact boundaries of the drawn stroke, cropping out all dead whitespace.</p>
+                        </div>
+                    </div>
+
+                    <div id="step-2"
+                        class="pipeline-step bg-white border border-gray-200 rounded-xl p-6 flex items-start gap-4 shadow-sm scroll-reveal-step">
+                        <div
+                            class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-mono text-sm shrink-0">
+                            2</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900">Dimensionality Reduction</h4>
+                            <p class="text-sm text-gray-500 mt-1 leading-relaxed">The cropped segment is redrawn onto a
+                                hidden 28x28 pixel canvas, downsampling the high-resolution stroke into a low-resolution
+                                matrix.</p>
+
+                            <p class="text-[10px] text-gray-400 mt-2 uppercase tracking-wide">Visualization of 28x28
+                                downsampling</p>
+                        </div>
+                    </div>
+
+                    <div id="step-3"
+                        class="pipeline-step bg-white border border-gray-200 rounded-xl p-6 flex items-start gap-4 shadow-sm scroll-reveal-step">
+                        <div
+                            class="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-mono text-sm shrink-0">
+                            3</div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900">Array Serialization</h4>
+                            <p class="text-sm text-gray-500 mt-1 leading-relaxed">Extracts the grayscale intensity of
+                                each pixel, forming a 2D array of 28x28 integers to be sent via HTTP POST.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-[#0d1117] p-6 rounded-2xl border border-gray-800 shadow-2xl font-mono text-sm text-gray-300 scroll-reveal-image transform rotate-1 hover:rotate-0 transition-transform duration-500 preserve-3d">
+                    <div class="text-gray-500 mb-4 border-b border-gray-800 pb-2">// Step 3: JS Serialization Logic
+                    </div>
+                    <div class="text-[#ff7b72]">let</div>
+                    <div class="inline text-white">matrix = [];</div><br><br>
+                    <div class="text-[#ff7b72]">for</div>
+                    <div class="inline text-white">(let y = 0; y < 28; y++) {</div><br>
+                            <div class="ml-4 text-[#ff7b72]">let</div>
+                            <div class="inline text-white">row = [];</div><br>
+                            <div class="ml-4 text-[#ff7b72]">for</div>
+                            <div class="inline text-white">(let x = 0; x < 28; x++) {</div><br>
+                                    <div class="ml-8 text-gray-500">// (y * width + x) * 4 channels (RGBA)</div><br>
+                                    <div class="ml-8 text-[#ff7b72]">let</div>
+                                    <div class="inline text-white">index = (y * 28 + x) * 4;</div><br>
+                                    <div class="ml-8 text-gray-500">// Push R channel (0-255 intensity)</div><br>
+                                    <div class="ml-8 text-white">row.<span
+                                            class="text-[#d2a8ff]">push</span>(smallData[index]);</div><br>
+                                    <div class="ml-4 text-white">}</div><br>
+                                    <div class="ml-4 text-white">matrix.<span class="text-[#d2a8ff]">push</span>(row);
+                                    </div><br>
+                                    <div class="text-white">}</div>
+                            </div>
+
+                    </div>
+                </div>
+    </section>
+
+    <section id="api-specs" class="py-32 px-6 border-t border-gray-100">
+        <div class="max-w-5xl mx-auto perspective-1000">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Integration</h2>
+                <h3 class="text-3xl font-bold text-gray-900 tracking-tight">API Payload Structure</h3>
+                <p class="text-gray-500 mt-4 max-w-2xl mx-auto">The backend expects a strict JSON schema containing the
+                    2D pixel matrix. Here is the architecture of the request and response.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 api-card opacity-0">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-500">Request</span>
+                        <span
+                            class="px-2 py-1 bg-green-100 text-green-700 font-mono text-xs rounded border border-green-200">POST
+                            /predict</span>
+                    </div>
+
+                    <div
+                        class="bg-white border border-gray-200 rounded p-4 font-mono text-xs text-gray-600 mt-4 overflow-x-auto shadow-sm">
+                        {
+                        "image": [
+                        [0, 0, 0, 0, 128, 255, 128, 0, ...],
+                        [0, 0, 0, 50, 255, 255, 255, 0, ...],
+                        // ... 28 total arrays of length 28
+                        ]
+                        }
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 api-card opacity-0">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-500">Response</span>
+                        <span
+                            class="px-2 py-1 bg-blue-100 text-blue-700 font-mono text-xs rounded border border-blue-200">200
+                            OK</span>
+                    </div>
+                    <div
+                        class="bg-white border border-gray-200 rounded p-4 font-mono text-xs text-gray-600 overflow-x-auto h-[160px] shadow-sm">
+                        {
+                        "digit": 7,
+                        "confidence": 0.9854,
+                        "probabilities": {
+                        "0": 0.0001,
+                        "1": 0.0020,
+                        "2": 0.0005,
+                        "3": 0.0010,
+                        "4": 0.0000,
+                        "5": 0.0000,
+                        "6": 0.0000,
+                        "7": 0.9854,
+                        "8": 0.0010,
+                        "9": 0.0100
+                        }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-12 px-6 text-gray-400 text-sm font-mono border-t border-gray-100 bg-gray-50">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>Built by Kirtan Patidar & Harshit Walke</p>
+            <p>B.Tech CSE • AI & Data Science</p>
+        </div>
+    </footer>
+
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out;
+        }
+    </style>
+
+    <script>
+        // ===== GSAP ANIMATIONS & EFFECTS =====
+        document.addEventListener("DOMContentLoaded", () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            // 1. Progress Bar Update
+            gsap.to("#scroll-progress", {
+                value: 100, width: "100%", ease: "none",
+                scrollTrigger: { scrub: 0.3 }
+            });
+
+            // 2. Workspace entrance (Removed the 3D mouse tracking to fix canvas drawing)
+            gsap.to("#workspace-container", { opacity: 1, y: 0, duration: 1.2, ease: "expo.out" });
+
+            // 3. Parallax Background Scrubbing
+            gsap.to("#grid-bg", {
+                scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 1 },
+                y: "-=150", ease: "none"
+            });
+
+            gsap.to("#node-graphic", { y: -20, rotation: 5, duration: 4, repeat: -1, yoyo: true, ease: "sine.inOut" });
+            gsap.to("#code-graphic", { x: 10, duration: 3, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+            // 4. Mouse tracking for background only (keeps the cool effects, leaves canvas alone)
+            window.addEventListener('mousemove', (e) => {
+                const x = (e.clientX / window.innerWidth - 0.5);
+                const y = (e.clientY / window.innerHeight - 0.5);
+                gsap.to('#orb-1', { x: x * -80, y: y * -80, duration: 1.5, ease: "power2.out" });
+                gsap.to('#orb-2', { x: x * -60, y: y * -60, duration: 1.5, ease: "power2.out" });
+                gsap.to('#node-graphic', { x: x * -100, y: y * -100, duration: 2, ease: "power2.out" });
+                gsap.to('#code-graphic', { x: x * -40, y: y * -40, duration: 2, ease: "power2.out" });
+            });
+
+            // 5. Section Reveals
+            gsap.utils.toArray('.scroll-reveal').forEach(el => {
+                gsap.fromTo(el,
+                    { opacity: 0, y: 30 },
+                    { scrollTrigger: { trigger: el, start: "top 85%" }, opacity: 1, y: 0, duration: 1, ease: "power3.out" }
+                );
+            });
+
+            gsap.utils.toArray('.scroll-reveal-step').forEach(el => {
+                gsap.fromTo(el,
+                    { opacity: 0, x: -20 },
+                    { scrollTrigger: { trigger: el, start: "top 85%" }, opacity: 1, x: 0, duration: 0.8, ease: "power2.out" }
+                );
+            });
+
+            gsap.fromTo(".scroll-reveal-image",
+                { opacity: 0, rotationY: 20, x: 50 },
+                { scrollTrigger: { trigger: ".scroll-reveal-image", start: "top 80%" }, opacity: 1, rotationY: 0, x: 0, duration: 1.2, ease: "power3.out" }
+            );
+
+            // 6. API Cards 3D Flip
+            gsap.fromTo(".api-card",
+                { opacity: 0, rotationX: 45, y: 50 },
+                { scrollTrigger: { trigger: "#api-specs", start: "top 70%" }, opacity: 1, rotationX: 0, y: 0, duration: 1, stagger: 0.2, ease: "back.out(1.2)" }
+            );
+
+            // Navbar hide/show
+            let lastScroll = 0;
+            window.addEventListener("scroll", () => {
+                const currentScroll = window.pageYOffset;
+                const navbar = document.getElementById("navbar");
+                if (currentScroll > 50 && currentScroll > lastScroll) {
+                    navbar.style.transform = "translateY(-100%)";
+                } else {
+                    navbar.style.transform = "translateY(0)";
+                }
+                lastScroll = currentScroll;
+            });
+        });
+
+        // ===== CORE LOGIC & FIXED DRAWING UI =====
+        const canvas = document.getElementById("drawCanvas");
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 18;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "white";
+
+        let drawing = false;
+
+        function resetUI() {
+            document.getElementById("result-container").classList.add("hidden");
+            document.getElementById("loading").innerHTML = `<span class="text-green-400">root@model</span>:~$ await input...`;
+            document.querySelectorAll('.pipeline-step').forEach(el => {
+                el.classList.remove('active');
+                el.querySelector('div.w-8').classList.remove('bg-blue-600', 'text-white');
+                el.querySelector('div.w-8').classList.add('bg-gray-100', 'text-gray-600');
+            });
+        }
+
+        // Helper function to get exact coordinates for both Mouse and Touch
+        function getCoordinates(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            let clientX = event.clientX;
+            let clientY = event.clientY;
+
+            if (event.touches && event.touches.length > 0) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            }
+
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        // Mouse Events
+        canvas.addEventListener("mousedown", (e) => {
+            drawing = true;
+            const pos = getCoordinates(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+            if (!drawing) return;
+            const pos = getCoordinates(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            resetUI();
+        });
+
+        // Touch Events
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            drawing = true;
+            const pos = getCoordinates(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }, { passive: false });
+
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            if (!drawing) return;
+            const pos = getCoordinates(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            resetUI();
+        }, { passive: false });
+
+        // Stop Drawing
+        const stopDrawing = () => { drawing = false; ctx.beginPath(); };
+        canvas.addEventListener("mouseup", stopDrawing);
+        canvas.addEventListener("mouseout", stopDrawing);
+        canvas.addEventListener("touchend", stopDrawing);
+
+        function clearCanvas() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            resetUI();
+        }
+
+        async function typeTerminal(text, elementId, className = "text-yellow-400") {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<span class="${className}">> </span>`;
+            for (let i = 0; i < text.length; i++) {
+                el.innerHTML += `<span class="${className}">${text.charAt(i)}</span>`;
+                await new Promise(r => setTimeout(r, 10));
+            }
+        }
+
+        // Visual Scanner Laser Animation
+        function animateScanner() {
+            const scanner = document.getElementById('scanner-line');
+            return new Promise(resolve => {
+                gsap.fromTo(scanner,
+                    { top: 0, opacity: 1 },
+                    {
+                        top: "100%", duration: 0.6, repeat: 1, yoyo: true, ease: "power1.inOut", onComplete: () => {
+                            gsap.to(scanner, { opacity: 0, duration: 0.2 });
+                            resolve();
+                        }
+                    }
+                );
+            });
+        }
+
+        // --- CONFIGURATION ---
+        const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+            ? "http://127.0.0.1:8000"
+            : "https://your-backend-url.render.com"; // Replace with your production URL
+
+        async function predictDigit() {
+            const loading = document.getElementById("loading");
+            const resultContainer = document.getElementById("result-container");
+            const resultDiv = document.getElementById("result");
+            const btn = document.getElementById("predict-btn");
+
+            resultContainer.classList.add("hidden");
+            resultDiv.innerHTML = "";
+
+            // Button loading state
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>Processing</span>`;
+            btn.disabled = true;
+
+            await typeTerminal("Extracting tensor from canvas...", "loading");
+
+            const size = 200;
+            const imageData = ctx.getImageData(0, 0, size, size);
+            const pixels = imageData.data;
+
+            let minX = size, minY = size, maxX = 0, maxY = 0;
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    let index = (y * size + x) * 4;
+                    if (pixels[index] > 10) {
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                    }
+                }
+            }
+
+            if (minX > maxX || minY > maxY) {
+                loading.innerHTML = `<span class="text-green-400">root@model</span>:~$ await input...`;
+                resultContainer.classList.remove("hidden");
+                resultDiv.innerHTML = `<div class="text-sm text-red-400 font-mono text-center">Error: Canvas is empty. Draw a digit first.</div>`;
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+                return;
+            }
+
+            // Fire scanner animation
+            await animateScanner();
+
+            let padding = 20;
+            minX = Math.max(0, minX - padding);
+            minY = Math.max(0, minY - padding);
+            maxX = Math.min(size, maxX + padding);
+            maxY = Math.min(size, maxY + padding);
+
+            let width = maxX - minX;
+            let height = maxY - minY;
+
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext("2d");
+            tempCtx.drawImage(canvas, minX, minY, width, height, 0, 0, width, height);
+
+            const resizeCanvas = document.getElementById("resizeCanvas");
+            const rctx = resizeCanvas.getContext("2d");
+
+            rctx.fillStyle = "black";
+            rctx.fillRect(0, 0, 28, 28);
+            rctx.drawImage(tempCanvas, 0, 0, 28, 28);
+
+            const smallData = rctx.getImageData(0, 0, 28, 28).data;
+            let matrix = [];
+
+            for (let y = 0; y < 28; y++) {
+                let row = [];
+                for (let x = 0; x < 28; x++) {
+                    let index = (y * 28 + x) * 4;
+                    row.push(smallData[index]);
+                }
+                matrix.push(row);
+            }
+
+            await typeTerminal("Sending normalized tensor to API...", "loading");
+
+            // 6. Fetch API
+            try {
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: matrix })
+                });
+
+                const result = await response.json();
+                loading.innerHTML = `<span class="text-blue-400">> Inference complete. Status: 200 OK</span>`;
+                resultContainer.classList.remove("hidden");
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="flex justify-between items-center py-1">
+                            <span class="text-xs text-gray-400 font-mono uppercase tracking-widest">Prediction</span>
+                            <span class="text-3xl font-bold text-white">${result.digit}</span>
+                        </div>
+                        <div class="flex justify-between items-center py-1 mt-1 border-t border-gray-800">
+                            <span class="text-xs text-gray-400 font-mono uppercase tracking-widest">Confidence</span>
+                            <span class="text-sm font-mono text-green-400 font-semibold bg-green-400/10 px-2 py-0.5 rounded">
+                                ${(result.confidence * 100).toFixed(2)}%
+                            </span>
+                        </div>
+                    `;
+                    gsap.fromTo(resultContainer, { scale: 0.95, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(1.5)" });
+                } else {
+                    resultDiv.innerHTML = `<div class="text-sm text-red-400 font-mono text-center">API Error: ${result.detail}</div>`;
+                }
+
+            } catch {
+                loading.innerHTML = `<span class="text-green-400">root@model</span>:~$ await input...`;
+                resultContainer.classList.remove("hidden");
+                resultDiv.innerHTML = `
+                    <div class="text-sm text-red-400 font-mono flex flex-col items-center text-center gap-2">
+                        <span>Connection Refused.</span>
+                        <span class="text-[10px] text-gray-500">Ensure FastAPI server is running on ${API_URL}</span>
+                    </div>
+                `;
+            } finally {
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

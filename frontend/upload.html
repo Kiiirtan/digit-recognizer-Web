@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Image | CNN Model</title>
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+            color: #111827;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Subtle grid background */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        }
+
+        /* Drag & Drop Zone Styling */
+        .dropzone {
+            transition: all 0.3s ease;
+            border: 2px dashed #e5e7eb;
+            background-color: #f9fafb;
+        }
+
+        .dropzone.dragover {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+
+        .preserve-3d {
+            transform-style: preserve-3d;
+        }
+
+        .perspective-1000 {
+            perspective: 1000px;
+        }
+    </style>
+</head>
+
+<body class="relative overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 flex flex-col min-h-screen">
+
+    <div id="scroll-progress" class="fixed top-0 left-0 h-1 bg-blue-600 z-[60] w-0"></div>
+
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none perspective-1000">
+        <div id="grid-bg" class="absolute inset-[-50%] bg-grid w-[200%] h-[200%] opacity-80"></div>
+
+        <div id="orb-1" class="absolute top-[10%] left-[10%] w-96 h-96 bg-blue-400/10 rounded-full blur-[100px]"></div>
+        <div id="orb-2" class="absolute bottom-[20%] right-[10%] w-96 h-96 bg-indigo-400/10 rounded-full blur-[100px]">
+        </div>
+
+        <svg id="node-graphic" class="absolute top-[25%] right-[15%] w-48 h-48 opacity-20" viewBox="0 0 100 100">
+            <rect x="20" y="20" width="60" height="60" fill="none" stroke="#3b82f6" stroke-width="1"
+                stroke-dasharray="4 4" />
+            <circle cx="50" cy="50" r="15" fill="#3b82f6" opacity="0.5" />
+            <line x1="10" y1="50" x2="20" y2="50" stroke="#3b82f6" stroke-width="1" />
+            <line x1="80" y1="50" x2="90" y2="50" stroke="#3b82f6" stroke-width="1" />
+        </svg>
+
+        <div id="code-graphic"
+            class="absolute bottom-[20%] left-[10%] text-gray-300 font-mono text-xs opacity-40 transform -rotate-90 origin-left select-none">
+            img = cv2.resize(img, (28,28))<br>
+            img = img / 255.0
+        </div>
+    </div>
+
+    <header id="navbar"
+        class="w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50 fixed top-0 left-0 transition-transform duration-300">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3 group hover:opacity-80 transition-opacity">
+                <div class="w-2 h-2 rounded-full bg-blue-600 group-hover:animate-pulse"></div>
+                <h1 class="text-sm font-semibold tracking-tight text-gray-900">digit-recognizer</h1>
+            </a>
+
+            <nav class="flex space-x-6 text-sm text-gray-500 font-medium nav-links">
+                <a href="index.html" class="hover:text-gray-900 transition-colors hidden sm:flex items-center gap-1">
+                    ← <span class="hidden md:inline">Overview</span>
+                </a>
+                <a href="canvas.html" class="hover:text-gray-900 transition-colors flex items-center gap-1">
+                    Open Canvas
+                </a>
+                <a href="#upload-workspace"
+                    class="text-blue-600 font-semibold cursor-default border-b-2 border-blue-600 pb-1">
+                    Upload Image
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="upload-workspace"
+        class="flex flex-col items-center justify-center px-6 pt-32 pb-16 min-h-[95vh] relative perspective-1000">
+
+        <div id="workspace-container" class="w-full max-w-md opacity-0 translate-y-12 z-10 preserve-3d">
+
+            <div
+                class="bg-gray-900 text-gray-300 px-4 py-3 rounded-t-xl text-xs font-mono flex items-center justify-between border-b border-gray-800 shadow-2xl transform translate-z-[10px]">
+                <div class="flex gap-2">
+                    <div class="w-3 h-3 rounded-full bg-red-500/80 cursor-pointer hover:bg-red-400"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/80 cursor-pointer hover:bg-yellow-400"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/80 cursor-pointer hover:bg-green-400"></div>
+                </div>
+                <span class="opacity-70">~/cnn/image_upload.py</span>
+            </div>
+
+            <div
+                class="bg-white/90 backdrop-blur-xl border-x border-b border-gray-200 rounded-b-xl shadow-2xl p-6 md:p-8 relative overflow-hidden transform translate-z-[20px]">
+
+                <div class="text-center mb-6 relative z-10">
+                    <h2 class="text-2xl font-semibold text-gray-900 tracking-tight">Upload Dataset</h2>
+                    <p class="text-sm text-gray-500 mt-1">Upload a clear image of a handwritten digit.</p>
+                </div>
+
+                <div class="flex justify-center mb-6 relative z-10">
+                    <div id="drop-zone"
+                        class="dropzone w-full h-[200px] rounded-2xl flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group">
+
+                        <div id="upload-prompt"
+                            class="flex flex-col items-center pointer-events-none transition-opacity duration-300">
+                            <svg class="w-10 h-10 text-gray-400 group-hover:text-blue-500 mb-3 transition-colors"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                </path>
+                            </svg>
+                            <span class="text-sm font-medium text-gray-600">Click or drag image here</span>
+                            <span class="text-xs text-gray-400 mt-1">PNG, JPG supported</span>
+                        </div>
+
+                        <img id="imagePreview" src=""
+                            class="absolute inset-0 w-full h-full object-contain hidden bg-black/5 backdrop-blur-sm p-2" />
+
+                        <input type="file" id="imageInput" class="hidden" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                    <button onclick="clearUpload()"
+                        class="w-full py-2.5 px-4 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-2 focus:ring-gray-200">
+                        Clear Image
+                    </button>
+                    <button id="predict-btn" onclick="predict()"
+                        class="w-full py-2.5 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 shadow-md hover:shadow-lg transition-all focus:outline-none flex justify-center items-center gap-2 group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span class="relative z-10">Analyze</span>
+                        <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform relative z-10" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div
+                    class="bg-[#0d1117] rounded-lg p-4 font-mono text-xs md:text-sm min-h-[90px] flex flex-col justify-center border border-gray-800 shadow-inner relative z-10">
+                    <div id="loading" class="text-gray-400 break-words">
+                        <span class="text-green-400">root@model</span>:~$ await file_upload...
+                    </div>
+
+                    <div id="result-container" class="hidden mt-3 border-t border-gray-800 pt-3">
+                        <div id="result" class="space-y-1.5">
+                        </div>
+                    </div>
+                </div>
+
+                <canvas id="canvas" width="28" height="28" style="display:none;"></canvas>
+            </div>
+        </div>
+
+        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center opacity-0 animate-fade-in-up"
+            style="animation-delay: 1.5s; animation-fill-mode: forwards;">
+            <span class="text-[10px] text-gray-400 font-mono mb-2 uppercase tracking-widest">Processing Details</span>
+            <div class="w-[1px] h-8 bg-gradient-to-b from-gray-300 to-transparent"></div>
+        </div>
+    </main>
+
+    <section id="processing" class="py-32 px-6 border-t border-gray-100 bg-gray-50/50 relative overflow-hidden">
+        <div class="absolute top-10 left-[-5%] text-[10rem] font-bold text-gray-100 opacity-50 pointer-events-none z-0 tracking-tighter"
+            id="bg-text-pipeline">PIPELINE</div>
+
+        <div class="max-w-5xl mx-auto relative z-10">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Preprocessing</h2>
+                <h3 class="text-3xl font-bold text-gray-900 tracking-tight">Image Normalization Pipeline</h3>
+                <p class="text-gray-500 mt-4 max-w-2xl mx-auto">Unlike the interactive canvas, uploaded images vary
+                    wildly in size, color, and aspect ratio. The client-side Javascript heavily standardizes these
+                    images before sending them to the inference API.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-8 shadow-sm scroll-reveal-step hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
+                            </path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-900 text-lg mb-2">1. Dynamic Inversion</h4>
+                    <p class="text-sm text-gray-500 leading-relaxed">The algorithm checks the corners of the image to
+                        determine if it was drawn on dark or light paper. It converts to grayscale, applies a contrast
+                        boost, and dynamically inverts the colors to guarantee white ink on a black background.</p>
+                </div>
+
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-8 shadow-sm scroll-reveal-step hover:shadow-md transition-shadow">
+                    <div class="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-900 text-lg mb-2">2. Aspect-Aware Scaling</h4>
+                    <p class="text-sm text-gray-500 leading-relaxed">The digit is strictly cropped to its bounding box.
+                        Crucially, instead of stretching the image into a square, it is proportionally scaled down to
+                        fit inside a 20x20 pixel bounding box, preserving its natural shape.</p>
+                </div>
+
+                <div
+                    class="bg-white border border-gray-200 rounded-xl p-8 shadow-sm scroll-reveal-step hover:shadow-md transition-shadow">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 border border-blue-100">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4">
+                            </path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-900 text-lg mb-2">3. Tensor Generation</h4>
+                    <p class="text-sm text-gray-500 leading-relaxed">The 20x20 digit is centered perfectly inside a
+                        final 28x28 matrix (matching the MNIST standard). The raw pixel intensities are then serialized
+                        into JSON and pushed via HTTP POST.</p>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="api-specs" class="py-32 px-6 border-t border-gray-100">
+        <div class="max-w-5xl mx-auto perspective-1000">
+            <div class="text-center mb-16 scroll-reveal">
+                <h2 class="text-sm font-semibold text-blue-600 uppercase tracking-widest mb-2">Integration</h2>
+                <h3 class="text-3xl font-bold text-gray-900 tracking-tight">API Payload Structure</h3>
+                <p class="text-gray-500 mt-4 max-w-2xl mx-auto">The backend expects a strict JSON schema containing the
+                    2D pixel matrix.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 api-card opacity-0">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-500">Request</span>
+                        <span
+                            class="px-2 py-1 bg-green-100 text-green-700 font-mono text-xs rounded border border-green-200">POST
+                            /predict</span>
+                    </div>
+
+                    <div
+                        class="bg-white border border-gray-200 rounded p-4 font-mono text-xs text-gray-600 mt-4 overflow-x-auto shadow-sm">
+                        {
+                        "image": [
+                        [0, 0, 0, 0, 255, 255, 0, 0, ...],
+                        [0, 0, 0, 255, 255, 255, 255, 0, ...],
+                        // ... 28 total arrays of length 28
+                        ]
+                        }
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 api-card opacity-0">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-semibold uppercase tracking-widest text-gray-500">Response</span>
+                        <span
+                            class="px-2 py-1 bg-blue-100 text-blue-700 font-mono text-xs rounded border border-blue-200">200
+                            OK</span>
+                    </div>
+                    <div
+                        class="bg-white border border-gray-200 rounded p-4 font-mono text-xs text-gray-600 overflow-x-auto h-[140px] shadow-sm">
+                        {
+                        "digit": 8,
+                        "confidence": 0.9912,
+                        "probabilities": { ... }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-12 px-6 text-gray-400 text-sm font-mono border-t border-gray-100 bg-gray-50">
+        <div class="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>Built by Kirtan Patidar & Harshit Walke</p>
+            <p>B.Tech CSE • AI & Data Science</p>
+        </div>
+    </footer>
+
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translate(-50%, 20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translate(-50%, 0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out;
+        }
+    </style>
+
+    <script>
+        // --- GSAP Animations & Background Effects ---
+        document.addEventListener("DOMContentLoaded", () => {
+            gsap.registerPlugin(ScrollTrigger);
+
+            gsap.to("#scroll-progress", { value: 100, width: "100%", ease: "none", scrollTrigger: { scrub: 0.3 } });
+            gsap.to("#workspace-container", { opacity: 1, y: 0, duration: 1.2, ease: "expo.out" });
+
+            // Background Parallax
+            gsap.to("#grid-bg", { scrollTrigger: { trigger: "body", start: "top top", end: "bottom bottom", scrub: 1 }, y: "-=150", ease: "none" });
+            gsap.to("#node-graphic", { y: -20, rotation: 5, duration: 4, repeat: -1, yoyo: true, ease: "sine.inOut" });
+            gsap.to("#code-graphic", { x: 10, duration: 3, repeat: -1, yoyo: true, ease: "sine.inOut" });
+
+            // Mouse tracking
+            window.addEventListener('mousemove', (e) => {
+                const x = (e.clientX / window.innerWidth - 0.5);
+                const y = (e.clientY / window.innerHeight - 0.5);
+                gsap.to('#orb-1', { x: x * -80, y: y * -80, duration: 1.5, ease: "power2.out" });
+                gsap.to('#orb-2', { x: x * -60, y: y * -60, duration: 1.5, ease: "power2.out" });
+                gsap.to('#node-graphic', { x: x * -50, y: y * -50, duration: 2, ease: "power2.out" });
+                gsap.to('#code-graphic', { x: x * -20, y: y * -20, duration: 2, ease: "power2.out" });
+            });
+
+            // Scroll Reveals
+            gsap.utils.toArray('.scroll-reveal').forEach(el => {
+                gsap.fromTo(el, { opacity: 0, y: 30 }, { scrollTrigger: { trigger: el, start: "top 85%" }, opacity: 1, y: 0, duration: 1, ease: "power3.out" });
+            });
+            gsap.utils.toArray('.scroll-reveal-step').forEach(el => {
+                gsap.fromTo(el, { opacity: 0, y: 30 }, { scrollTrigger: { trigger: el, start: "top 85%" }, opacity: 1, y: 0, duration: 0.8, stagger: 0.2, ease: "back.out(1.2)" });
+            });
+
+            gsap.fromTo(".api-card", { opacity: 0, rotationX: 45, y: 50 }, { scrollTrigger: { trigger: "#api-specs", start: "top 70%" }, opacity: 1, rotationX: 0, y: 0, duration: 1, stagger: 0.2, ease: "back.out(1.2)" });
+
+            // Navbar hide/show
+            let lastScroll = 0;
+            window.addEventListener("scroll", () => {
+                const currentScroll = window.pageYOffset;
+                const navbar = document.getElementById("navbar");
+                if (currentScroll > 50 && currentScroll > lastScroll) {
+                    navbar.style.transform = "translateY(-100%)";
+                } else {
+                    navbar.style.transform = "translateY(0)";
+                }
+                lastScroll = currentScroll;
+            });
+        });
+
+        // --- DRAG, DROP, AND UPLOAD LOGIC ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const uploadPrompt = document.getElementById('upload-prompt');
+
+        let loadedImageFile = null;
+
+        // Click to open file dialog
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        // Drag events
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert("Please upload a valid image file.");
+                return;
+            }
+
+            loadedImageFile = file;
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                imagePreview.src = event.target.result;
+                imagePreview.classList.remove('hidden');
+                uploadPrompt.classList.add('hidden');
+
+                document.getElementById("result-container").classList.add("hidden");
+                typeTerminal("Image mounted into DOM. Ready for analysis.", "loading", "text-gray-400");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearUpload() {
+            loadedImageFile = null;
+            fileInput.value = "";
+            imagePreview.src = "";
+            imagePreview.classList.add('hidden');
+            uploadPrompt.classList.remove('hidden');
+
+            document.getElementById("result-container").classList.add("hidden");
+            document.getElementById("loading").innerHTML = `<span class="text-green-400">root@model</span>:~$ await file_upload...`;
+        }
+
+        // Terminal typing simulator
+        async function typeTerminal(text, elementId, className = "text-yellow-400") {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<span class="${className}">> </span>`;
+            for (let i = 0; i < text.length; i++) {
+                el.innerHTML += `<span class="${className}">${text.charAt(i)}</span>`;
+                await new Promise(r => setTimeout(r, 10));
+            }
+        }
+
+        // --- CONFIGURATION ---
+        const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
+            ? "http://127.0.0.1:8000"
+            : "https://your-backend-url.render.com"; // Replace with your production URL
+
+        // --- HIGH ACCURACY PREDICT LOGIC ---
+        async function predict() {
+            if (!loadedImageFile) {
+                document.getElementById("loading").innerHTML = `<span class="text-red-400">Error: Missing input payload. Upload an image.</span>`;
+                return;
+            }
+
+            const loading = document.getElementById("loading");
+            const resultContainer = document.getElementById("result-container");
+            const resultDiv = document.getElementById("result");
+            const btn = document.getElementById("predict-btn");
+
+            resultContainer.classList.add("hidden");
+            resultDiv.innerHTML = "";
+
+            const originalBtnText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>Processing</span>`;
+            btn.disabled = true;
+
+            await typeTerminal("Applying grayscale & dynamic inversion...", "loading");
+
+            const img = new Image();
+            const reader = new FileReader();
+
+            reader.onload = e => img.src = e.target.result;
+
+            img.onload = async function () {
+                // 1. Draw to 200x200 canvas
+                const size = 200;
+                const bigCanvas = document.createElement("canvas");
+                bigCanvas.width = size;
+                bigCanvas.height = size;
+                const ctx = bigCanvas.getContext("2d");
+
+                ctx.fillStyle = "white"; // Assume white background initially
+                ctx.fillRect(0, 0, size, size);
+                ctx.drawImage(img, 0, 0, size, size);
+
+                let imageData = ctx.getImageData(0, 0, size, size);
+                let pixels = imageData.data;
+
+                // 2. Dynamic Inversion (Check corners to see if background is light or dark)
+                let edgeSum = pixels[0] + pixels[(size - 1) * 4] + pixels[(size * (size - 1)) * 4] + pixels[(size * size - 1) * 4];
+                let isLightBackground = (edgeSum / 4) > 127;
+
+                // 3. Grayscale & Contrast Boost
+                for (let i = 0; i < pixels.length; i += 4) {
+                    let gray = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+
+                    if (isLightBackground) {
+                        gray = 255 - gray; // Invert to white on black
+                    }
+
+                    // Boost contrast to remove noise, but don't strictly binarize
+                    gray = gray > 100 ? Math.min(255, gray + 50) : 0;
+
+                    pixels[i] = pixels[i + 1] = pixels[i + 2] = gray;
+                }
+                ctx.putImageData(imageData, 0, 0);
+
+                // 4. Find Bounding Box
+                let minX = size, minY = size, maxX = 0, maxY = 0;
+
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        let index = (y * size + x) * 4;
+                        if (pixels[index] > 10) {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+
+                if (minX > maxX || minY > maxY) {
+                    loading.innerHTML = `<span class="text-red-400">Error: Could not extract features. Ensure image contains a clear digit.</span>`;
+                    btn.innerHTML = originalBtnText; btn.disabled = false;
+                    return;
+                }
+
+                // Add slight padding to bounding box
+                let pad = 4;
+                minX = Math.max(0, minX - pad);
+                minY = Math.max(0, minY - pad);
+                maxX = Math.min(size, maxX + pad);
+                maxY = Math.min(size, maxY + pad);
+
+                let width = maxX - minX;
+                let height = maxY - minY;
+
+                // Crop digit
+                const croppedCanvas = document.createElement("canvas");
+                croppedCanvas.width = width;
+                croppedCanvas.height = height;
+                const croppedCtx = croppedCanvas.getContext("2d");
+                croppedCtx.drawImage(bigCanvas, minX, minY, width, height, 0, 0, width, height);
+
+                await typeTerminal("Applying MNIST aspect-ratio scaling...", "loading");
+
+                // 5. CRITICAL FIX: Scale to 20x20 while PRESERVING aspect ratio
+                const smallCanvas = document.getElementById("canvas");
+                const smallCtx = smallCanvas.getContext("2d");
+                smallCtx.fillStyle = "black";
+                smallCtx.fillRect(0, 0, 28, 28);
+
+                // Calculate scaling factor to fit inside a 20x20 box (leaving 4px padding for 28x28)
+                const scale = 20.0 / Math.max(width, height);
+                const scaledWidth = width * scale;
+                const scaledHeight = height * scale;
+
+                // Calculate centering offsets
+                const dx = (28 - scaledWidth) / 2;
+                const dy = (28 - scaledHeight) / 2;
+
+                // Draw centered
+                smallCtx.drawImage(croppedCanvas, 0, 0, width, height, dx, dy, scaledWidth, scaledHeight);
+
+                const smallData = smallCtx.getImageData(0, 0, 28, 28).data;
+                let matrix = [];
+
+                for (let y = 0; y < 28; y++) {
+                    let row = [];
+                    for (let x = 0; x < 28; x++) {
+                        let index = (y * 28 + x) * 4;
+                        row.push(smallData[index]);
+                    }
+                    matrix.push(row);
+                }
+
+                await typeTerminal("Sending normalized tensor to API...", "loading");
+
+                // 6. Fetch API
+                try {
+                    const response = await fetch(`${API_URL}/predict`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ image: matrix })
+                    });
+
+                    const result = await response.json();
+                    loading.innerHTML = `<span class="text-blue-400">> Inference complete. Status: 200 OK</span>`;
+                    resultContainer.classList.remove("hidden");
+
+                    if (response.ok) {
+                        resultDiv.innerHTML = `
+                            <div class="flex justify-between items-center py-1">
+                                <span class="text-xs text-gray-400 font-mono uppercase tracking-widest">Prediction</span>
+                                <span class="text-3xl font-bold text-white">${result.digit}</span>
+                            </div>
+                            <div class="flex justify-between items-center py-1 mt-1 border-t border-gray-800">
+                                <span class="text-xs text-gray-400 font-mono uppercase tracking-widest">Confidence</span>
+                                <span class="text-sm font-mono text-green-400 font-semibold bg-green-400/10 px-2 py-0.5 rounded">
+                                    ${(result.confidence * 100).toFixed(2)}%
+                                </span>
+                            </div>
+                        `;
+                        gsap.fromTo(resultContainer, { scale: 0.95, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(1.5)" });
+                    } else {
+                        resultDiv.innerHTML = `<div class="text-sm text-red-400 font-mono text-center">API Error: ${result.detail}</div>`;
+                    }
+
+                } catch {
+                    loading.innerHTML = `<span class="text-green-400">root@model</span>:~$ await file_upload...`;
+                    resultContainer.classList.remove("hidden");
+                    resultDiv.innerHTML = `
+                        <div class="text-sm text-red-400 font-mono flex flex-col items-center text-center gap-2">
+                            <span>Connection Refused.</span>
+                            <span class="text-[10px] text-gray-500">Ensure FastAPI server is running on ${API_URL}</span>
+                        </div>
+                    `;
+                } finally {
+                    btn.innerHTML = originalBtnText;
+                    btn.disabled = false;
+                }
+            };
+
+            reader.readAsDataURL(loadedImageFile);
+        }
+    </script>
+</body>
+
+</html>
