@@ -3,7 +3,7 @@
 A full-stack, deep learning application that recognizes handwritten digits (0-9). Built with a **FastAPI** backend running a **Keras/TensorFlow CNN model**, and a modern **Vanilla JS** frontend with high-performance canvas interaction.
 
 ## 🚀 Live Demo
-- **Frontend**: [https://Kiiirtan.github.io/digit-recognizer-Web](https://Kiiirtan.github.io/digit-recognizer-Web)
+- **Frontend**: [[https://Kiiirtan.github.io/digit-recognizer-Web](https://Kiiirtan.github.io/digit-recognizer-Web](https://kiiirtan.github.io/digit-recognizer-Web/frontend/index.html))
 - **API (Backend)**: [https://digit-recognizer-api-eukx.onrender.com](https://digit-recognizer-api-eukx.onrender.com)
 
 ---
