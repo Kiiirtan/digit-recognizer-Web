@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Image | CNN Model</title>
     <meta http-equiv="Cache-Control" content="no-store" />
+    <link rel="preconnect" href="https://digit-recognizer-api-eukx.onrender.com">
+    <link rel="dns-prefetch" href="//digit-recognizer-api-eukx.onrender.com">
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -454,6 +456,15 @@
         const API_URL = window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost"
             ? "http://127.0.0.1:8000"
             : "https://digit-recognizer-api-eukx.onrender.com"; // Replace with your production URL
+        
+        (function prewarm() {
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 5000);
+                fetch(`${API_URL}/health`, { method: "GET", keepalive: true, signal: controller.signal })
+                    .finally(() => clearTimeout(timer));
+            } catch (e) {}
+        })();
 
         // --- HIGH ACCURACY PREDICT LOGIC ---
         async function predict() {
@@ -617,13 +628,17 @@
                         resultDiv.innerHTML = `<div class="text-sm text-red-400 font-mono text-center">API Error: ${result.detail}</div>`;
                     }
 
-                } catch {
-                    loading.innerHTML = `<span class="text-green-400">root@model</span>:~$ await file_upload...`;
+                } catch (err) {
+                    console.error("Prediction Error:", err);
+                    loading.innerHTML = `<span class="text-red-400">root@model</span>:~$ error: connection_failed`;
                     resultContainer.classList.remove("hidden");
                     resultDiv.innerHTML = `
                         <div class="text-sm text-red-400 font-mono flex flex-col items-center text-center gap-2">
-                            <span>Connection Refused.</span>
-                            <span class="text-[10px] text-gray-500">Ensure FastAPI server is running on ${API_URL}</span>
+                            <span class="font-bold">Server is Waking Up...</span>
+                            <p class="text-[10px] text-gray-500 leading-tight">
+                                The API is hosted on a free tier and may take <b>60-120s</b> to start after inactivity. 
+                                Please wait a moment and try again!
+                            </p>
                         </div>
                     `;
                 } finally {

@@ -11,3 +11,5 @@ venv
 *.keras
 # But keep the model directory if it's small enough, or use a volume/external storage
 # Model/
+Data/
+

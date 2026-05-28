@@ -3,7 +3,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
-from backend.inference import predict_digit
+from backend.inference import predict_from_matrix
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +21,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        _ = await predict({"image": (np.zeros((28, 28), dtype=np.float32)).tolist()})
+    except Exception:
+        try:
+            digit, confidence = predict_from_matrix(np.zeros((28, 28), dtype=np.float32))
+            logger.info(f"Warm-up complete: {digit} {confidence:.4f}")
+        except Exception as e:
+            logger.warning(f"Warm-up failed: {e}")
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 @app.post("/predict")
 async def predict(data: dict):
@@ -47,7 +62,6 @@ async def predict(data: dict):
             image = image / 255.0
 
         # Use the inference helper
-        from backend.inference import predict_from_matrix
         
         digit, confidence = predict_from_matrix(image)
         
@@ -63,5 +77,3 @@ async def predict(data: dict):
     except Exception as e:
         logger.exception("Prediction error")
         raise HTTPException(status_code=500, detail="Internal server error")
-#venv\Scripts\activate        
-#uvicorn backend.app:app --reload

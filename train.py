@@ -5,7 +5,7 @@ from tensorflow.keras import layers
 from sklearn.model_selection import train_test_split
 
 # Load dataset
-train_data = pd.read_csv("data/train.csv")
+train_data = pd.read_csv("Data/train.csv")
 
 # Separate features and labels
 X = train_data.drop("label", axis=1).values / 255.0
@@ -53,6 +53,6 @@ model.fit(
 )
 
 # Save model
-model.save("model/digit_model.keras")
+model.save("Model/digit_model.keras")
 
 print("Model trained and saved successfully.")
