@@ -315,200 +315,6 @@
         </div>
     </section>
 
-    <section id="installation" class="py-32 px-6 border-t border-gray-100">
-        <div class="max-w-3xl mx-auto text-center">
-            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-8 scroll-reveal">Run Locally
-                        class="card-inner w-full h-full p-6 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm shadow-sm transition-colors duration-300 hover:border-blue-400 preserve-3d">
-                        <div class="flex items-center justify-between mb-4 transform translate-z-[20px]">
-                            <div
-                                class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center icon-container">
-                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                                </svg>
-                            </div>
-                            <span class="text-gray-300 arrow">→</span>
-                        </div>
-                        <div class="transform translate-z-[30px]">
-                            <h2 class="text-lg font-semibold text-gray-900 mb-1">Upload Image</h2>
-                            <p class="text-sm text-gray-500">Test the model with an existing image.</p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <section id="about" class="py-32 px-6 border-t border-gray-100 bg-gray-50/30 overflow-hidden perspective-1000">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-12 scroll-reveal">Network
-                Architecture</h2>
-
-            <div class="grid md:grid-cols-2 gap-16 items-center">
-                <div class="scroll-reveal-text">
-                    <p class="text-gray-600 text-lg leading-relaxed mb-6">
-                        This application utilizes a custom Convolutional Neural Network built with TensorFlow. The
-                        architecture is specifically optimized for edge-inference and low latency.
-                    </p>
-                    <p class="text-gray-600 text-lg leading-relaxed">
-                        The input matrix passes through multiple <code
-                            class="bg-gray-100 px-1 rounded text-sm text-blue-600 font-mono">Conv2D</code> and <code
-                            class="bg-gray-100 px-1 rounded text-sm text-blue-600 font-mono">MaxPooling2D</code> layers
-                        to extract spatial hierarchies—edges, curves, and loops—before being flattened and classified
-                        into one of the 10 digit classes.
-                    </p>
-                </div>
-
-                <div
-                    class="code-block bg-[#0d1117] p-8 rounded-2xl border border-gray-800 font-mono text-sm text-gray-300 shadow-2xl preserve-3d">
-                    <div class="flex gap-2 mb-6 border-b border-gray-800 pb-4">
-                        <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
-                        <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                        <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
-                    </div>
-                    <div class="text-gray-500 mb-2"># Model definition in Keras</div>
-                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Conv2D<span
-                            class="text-white">(</span>32, (3,3), activation='relu'<span class="text-white">))</span>
-                    </div>
-                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>MaxPooling2D<span
-                            class="text-white">(</span>(2,2)<span class="text-white">))</span></div>
-                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Flatten<span
-                            class="text-white">())</span></div>
-                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Dropout<span
-                            class="text-white">(</span>0.2<span class="text-white">))</span></div>
-                    <div class="text-[#79c0ff]">model.add<span class="text-white">(</span>Dense<span
-                            class="text-white">(</span>128, activation='relu'<span class="text-white">))</span></div>
-                    <div class="text-[#79c0ff] mb-2">model.add<span class="text-white">(</span>Dense<span
-                            class="text-white">(</span>10, activation='softmax'<span class="text-white">))</span></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="preprocessing" class="py-32 px-6 border-t border-gray-100">
-        <div class="max-w-5xl mx-auto">
-            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest mb-12 scroll-reveal">Data
-                Preprocessing Pipeline</h2>
-
-            <div class="grid md:grid-cols-2 gap-16 items-start">
-                <div
-                    class="w-full bg-gray-50 rounded-2xl border border-gray-200 p-6 flex flex-col items-center justify-center scroll-reveal-image">
-
-                    <p class="text-xs text-gray-400 mt-4 text-center">Visual representation of tensor transformations
-                    </p>
-                </div>
-
-                <div class="scroll-reveal-text">
-                    <h3 class="text-2xl font-semibold text-gray-900 mb-4">Bridging the gap between canvas and tensor.
-                    </h3>
-                    <p class="text-gray-600 text-lg leading-relaxed mb-8">
-                        The original dataset consists of white digits centered on a black background, strictly bounded
-                        to a 28x28 pixel grid. Because users draw black ink on a white HTML canvas of variable size, the
-                        client-side code must aggressively preprocess the input to prevent model hallucination.
-                    </p>
-
-                    <ul class="space-y-6">
-                        <li class="flex gap-4">
-                            <div
-                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-mono text-sm shrink-0">
-                                1</div>
-                            <div>
-                                <h4 class="font-semibold text-gray-900">Grayscale & Inversion</h4>
-                                <p class="text-sm text-gray-500 mt-1">Converts the RGB canvas data to a single-channel
-                                    grayscale array, and inverts the colors to match the dataset (white stroke, black
-                                    background).</p>
-                            </div>
-                        </li>
-                        <li class="flex gap-4">
-                            <div
-                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-mono text-sm shrink-0">
-                                2</div>
-                            <div>
-                                <h4 class="font-semibold text-gray-900">Bounding Box Extraction</h4>
-                                <p class="text-sm text-gray-500 mt-1">Crops empty whitespace around the user's drawing
-                                    so the digit occupies the maximum relative area.</p>
-                            </div>
-                        </li>
-                        <li class="flex gap-4">
-                            <div
-                                class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-mono text-sm shrink-0">
-                                3</div>
-                            <div>
-                                <h4 class="font-semibold text-gray-900">Downsampling & Normalization</h4>
-                                <p class="text-sm text-gray-500 mt-1">Resizes the cropped image strictly to a 28x28
-                                    matrix and normalizes pixel intensities to float values between 0.0 and 1.0.</p>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="evaluation" class="py-32 px-6 border-t border-gray-100 bg-gray-50/30">
-        <div class="max-w-5xl mx-auto">
-            <div class="flex justify-between items-end mb-16 scroll-reveal">
-                <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-widest">Model Evaluation</h2>
-                <a href="http://yann.lecun.com/exdb/mnist/" target="_blank"
-                    class="text-sm text-blue-600 hover:text-blue-800 transition-colors">View Source Dataset →</a>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-                <div
-                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-4xl font-semibold text-gray-900 mb-2 tracking-tight"><span
-                            id="count-samples">0</span>k</div>
-                    <div class="text-sm text-gray-500 font-mono">Training Set</div>
-                </div>
-                <div
-                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-4xl font-semibold text-gray-900 mb-2 tracking-tight">10k</div>
-                    <div class="text-sm text-gray-500 font-mono">Validation Set</div>
-                </div>
-                <div
-                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-4xl font-semibold text-gray-900 mb-2 tracking-tight">0.04</div>
-                    <div class="text-sm text-gray-500 font-mono">Loss (Cross-Entropy)</div>
-                </div>
-                <div
-                    class="metric-block bg-white p-6 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="text-4xl font-semibold text-blue-600 mb-2 tracking-tight">98.5<span
-                            class="text-2xl">%</span></div>
-                    <div class="text-sm text-gray-500 font-mono">Test Accuracy</div>
-                </div>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-16 items-center">
-                <div class="scroll-reveal-text">
-                    <h3 class="text-2xl font-semibold text-gray-900 mb-4">Understanding Model Limitations</h3>
-                    <p class="text-gray-600 text-lg leading-relaxed mb-6">
-                        While the model achieves exceptional accuracy, analyzing the confusion matrix reveals distinct
-                        edge cases. The highest rate of false positives occurs between visually similar digits.
-                    </p>
-                    <p class="text-gray-600 text-lg leading-relaxed">
-                        For instance, heavily slanted <span
-                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">1</span>s are
-                        occasionally misclassified as <span
-                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">7</span>s, and
-                        loosely drawn <span
-                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">3</span>s can be
-                        confused with <span
-                            class="font-mono text-sm bg-gray-100 px-1 rounded border border-gray-200">5</span>s. Dropout
-                        regularization was implemented to reduce overfitting on the distinct handwriting styles present
-                        in the dataset.
-                    </p>
-                </div>
-
-                <div
-                    class="w-full bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-col items-center scroll-reveal-image">
-
-                    <p class="text-xs text-gray-400 mt-4 text-center">Confusion matrix heatmap on test validation</p>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <section id="installation" class="py-32 px-6 border-t border-gray-100">
         <div class="max-w-3xl mx-auto text-center">
@@ -599,6 +405,25 @@
                     .finally(() => clearTimeout(timer));
             } catch (e) {}
         })();
+
+        function goToCanvas() {
+            window.location.href = 'canvas.html';
+        }
+
+        function goToUpload() {
+            window.location.href = 'upload.html';
+        }
+
+        function copyToClipboard(btn) {
+            const codeBlock = btn.parentElement.querySelector('.leading-relaxed');
+            const text = codeBlock.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const feedback = btn.parentElement.querySelector('.copy-feedback');
+                feedback.style.opacity = '1';
+                setTimeout(() => { feedback.style.opacity = '0'; }, 1500);
+            });
+        }
+
         const text = "> Initializing CNN Model... System ready.";
         let i = 0;
         function typeWriter() {
